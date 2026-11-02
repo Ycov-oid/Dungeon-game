@@ -14,69 +14,95 @@ void setColor(int color)
     SetConsoleTextAttribute(hConsole, color);
 }
 
-void printFlashingTitle() {
+// ---- helpers (put these above printFlashingTitle) ----
 
-
-    char *title = "--- R E A D Y   T O   R O C K ? ---";
-    char *title1 = "--- E A Y R D   O T   K C R O ? ---";
-    char *title2 = "--- D Y R A E   T O   C R K C ? ---";
-    char *title3 = "--- Y R D E A   O T   O K O R ? ---";
-    int flashes = 1;
-
-    printf("\n\n\n\n\n\n\n\n\n\n\n\n");
-    for (int i = 0; i < flashes; i++) {
-
-        printf("\r\t\t\t\t\t\t\t   \e[0;107m%s\033[0m", title1);
-        Sleep(150);
-        printf("\r\t\t\t\t\t\t\t   \e[0;92m%s\033[0m", title2);
-        Sleep(200);
-        printf("\r\t\t\t\t\t\t\t   \e[1;92m%s\033[0m", title3);
-        Sleep(150);
-
-    }
-
-    printf("\r\t\t\t\t\t\t\t   %s\033[0m", title);
-    printf("\n\n\n\n\n");
-
+static void enableANSI(void)
+{
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode = 0;
+    if (GetConsoleMode(h, &mode))
+        SetConsoleMode(h, mode | 0x0004); // ENABLE_VIRTUAL_TERMINAL_PROCESSING
 }
 
-void loadingScreen() {
+static int getConsoleWidth(void)
+{
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+        return csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    return 120; // fallback
+}
+
+void printFlashingTitle(void)
+{
+    const char *title = "--- R E A D Y   T O   R O C K ? ---";
+    const char *frames[] = {
+        "--- E A Y R D   O T   K C R O ? ---",
+        "--- D Y R A E   T O   C R K C ? ---",
+        "--- Y R D E A   O T   O K O R ? ---"
+    };
+    const char *styles[] = { "\033[0;107m", "\033[0;92m", "\033[1;92m" };
+    const int delays[]   = { 150, 200, 150 };
+    const int flashes    = 1;
+
+    int pad = (getConsoleWidth() - (int)strlen(title)) / 2;
+    if (pad < 0) pad = 0;
+
+    printf("\n\n\n\n\n\n\n\n\n\n\n\n");
+
+    for (int i = 0; i < flashes; i++) {
+        for (int f = 0; f < 3; f++) {
+            printf("\r%*s%s%s\033[0m", pad, "", styles[f], frames[f]);
+            fflush(stdout);
+            Sleep(delays[f]);
+        }
+    }
+
+    // Final, unscrambled title
+    printf("\r%*s\033[1;97m%s\033[0m", pad, "", title);
+    fflush(stdout);
+    printf("\n\n\n\n\n");
+}
+
+void loadingScreen(void)
+{
+    enableANSI();
     system("cls");
     printFlashingTitle();
 
-    int progress = 0;
+    int width    = getConsoleWidth();
     int barWidth = 75;
+    if (barWidth > width - 12) barWidth = width - 12;   // never wider than the window
 
-    printf("\n\t\t\t\t\t\t\t[");
-    for (int i = 0; i < barWidth; i++) {
-        printf(" ");
+    // layout: "[" + bar + "]" + " 100%"  => barWidth + 7 chars
+    int pad = (width - (barWidth + 7)) / 2;
+    if (pad < 0) pad = 0;
+
+    printf("\033[?25l"); // hide cursor while loading
+
+    for (int progress = 0; progress <= 100; progress++) {
+        int filled = progress * barWidth / 100;
+
+        printf("\r%*s[", pad, "");
+        printf("\033[1;92m");
+        for (int i = 0; i < filled; i++) putchar('|');
+        printf("\033[0m");
+        for (int i = filled; i < barWidth; i++) putchar(' ');
+        printf("] %3d%%", progress);
+
+        fflush(stdout);
+        Sleep(15);
     }
 
+    const char *done = "L O A D I N G   D O N E !";
+    int donePad = (width - (int)strlen(done)) / 2;
+    if (donePad < 0) donePad = 0;
 
-    for (progress = 0; progress <= 100; progress += 1) {
-        printf("\r\t\t\t\t\t[");
-        for (int i = 0; i < barWidth; i++) {
-            if (i < (progress * barWidth / 100)) {
+    printf("\n\n\n%*s\033[1;92m%s\033[0m\n", donePad, "", done);
+    fflush(stdout);
+    Sleep(1000);
 
-                printf("\e[1;92m|");
-            } else {
-
-                printf(" ");
-            }
-        }
-        setColor(7);
-        printf("]");
-
-        setColor(7);
-        printf("%d%%", progress);
-        Sleep(5);
-    }
-
-    printf("\n\n\n\t\t\t\t\t\t\t\t L O A D I N G   D O N E !\t\t\t\t\n");
-    Sleep(10);
-
+    printf("\033[?25h"); // show cursor again
 }
-
 
 // --- STRUCTURES ---
 

@@ -31,7 +31,7 @@ Credits
 
 Developed by:
 
-Rolando Alcantara
-Eunice Legaspi
-Sophia Ontoria
+Rolando Alcantara, 
+Eunice Legaspi, 
+Sophia Ontoria, 
 Rhon Jacob Ramos (ME)
